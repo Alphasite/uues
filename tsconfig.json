@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": [
+      "es2023",
+      "dom"
+    ],
+    "rootDir": "src",
+    "jsx": "react",
+    "moduleResolution": "nodenext",
+    "allowImportingTsExtensions": true,
+  }
+}
