@@ -68,6 +68,4 @@ export class Client {
             return value as { data: Document[] }
         })
     }
-
-    getL
 }
