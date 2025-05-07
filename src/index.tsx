@@ -1,8 +1,9 @@
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 
-import {GetApplicationsFromEmbeddedData} from "./uscis.ts";
+import {GetApplicationsFromEmbeddedData, Client} from "./uscis.ts";
 import {Root} from "./components.tsx";
+import {QueryClient} from "@tanstack/react-query";
 
 
 function addRootElement(): Element {
@@ -21,9 +22,12 @@ function addRootElement(): Element {
     return newAppElement;
 }
 
+const queryClient = new QueryClient();
+const uscisClient = new Client();
+
 let applications = GetApplicationsFromEmbeddedData();
 console.log(applications);
 
 let app = addRootElement();
 let root = createRoot(app);
-root.render(Root());
+root.render(Root(queryClient, uscisClient));

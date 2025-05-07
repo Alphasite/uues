@@ -1,5 +1,10 @@
+import {
+    QueryClient,
+    QueryClientProvider,
+    useQuery,
+} from '@tanstack/react-query'
 import * as React from 'react';
-import {EmbeddedCase, GetApplicationsFromEmbeddedData} from "./uscis.ts";
+import * as USCIS from "./uscis.ts";
 import {JSX} from "react";
 
 import Accordion from '@mui/material/Accordion';
@@ -16,24 +21,26 @@ import TableRow from '@mui/material/TableRow';
 import {Paper} from "@mui/material";
 import {Temporal} from "temporal-polyfill";
 
-
-export function Root() {
-    let applications = GetApplicationsFromEmbeddedData();
+export function Root(queryClient: QueryClient, uscisClient: USCIS.Client) {
+    let applications = USCIS.GetApplicationsFromEmbeddedData();
 
     return (
-        <>
+        <QueryClientProvider client={queryClient}>
             <h2 id="your-cases" className="with-margin-bottom-md with-margin-top-2xl section-title">
                 Raw Data (JSON)
             </h2>
-            <ApplicationOverviewCard applications={applications}/>
+            <ApplicationOverviewCard client={uscisClient} applications={applications}/>
             {applications.map(application => (
                 <ApplicationJsonCard application={application}/>
             ))}
-        </>
+        </QueryClientProvider>
     )
 }
 
-export function ApplicationOverviewCard({applications}: { applications: EmbeddedCase[] }): JSX.Element {
+export function ApplicationOverviewCard({client, applications}: {
+    client: USCIS.Client,
+    applications: USCIS.EmbeddedCase[]
+}): JSX.Element {
     let userActionNeeded = applications
         .map(application => application.actionRequired)
         .reduce((previousValue, actionRequired) => actionRequired || previousValue);
@@ -51,6 +58,15 @@ export function ApplicationOverviewCard({applications}: { applications: Embedded
                 <p>Action Required: {`${userActionNeeded}`}</p>
 
                 <p/>
+                <h4>Cases</h4>
+                <ApplicationTable applications={applications}/>
+
+                <p/>
+                <h4>Documents</h4>
+                <ApplicationDocumentsTable client={client} applications={applications}/>
+
+
+                <p/>
                 <h4>Notices</h4>
                 <ApplicationNoticesTable applications={applications}/>
 
@@ -58,13 +74,153 @@ export function ApplicationOverviewCard({applications}: { applications: Embedded
                 <h4>Events</h4>
                 <ApplicationEventsTable applications={applications}/>
 
-
             </AccordionDetails>
         </Accordion>
     );
 }
 
-export function ApplicationNoticesTable({applications}: { applications: EmbeddedCase[] }): JSX.Element {
+export function ApplicationTable({applications}: { applications: USCIS.EmbeddedCase[] }): JSX.Element {
+    let applications_ = applications.map(application => {
+        let eventTimeStamps = application.events.map(
+            event => Temporal.Instant.from(event.updatedAtTimestamp),
+        )
+        let noticeTimeStamps = application.notices.map(
+            notice => Temporal.Instant.from(notice.generationDate),
+        )
+
+        let events = [
+            ...eventTimeStamps,
+            ...noticeTimeStamps,
+            Temporal.Instant.from(application.updatedAtTimestamp || application.submissionTimestamp),
+        ]
+        let updatedAt = events.reduce((a, b) => {
+            return a.epochMilliseconds > b.epochMilliseconds ? a : b
+        });
+
+        return {
+            application: application,
+            updated: updatedAt,
+        };
+    }).sort((a, b) => {
+        let aTime = a.updated.epochMilliseconds
+        let bTime = b.updated.epochMilliseconds
+
+        return aTime - bTime;
+    }).reverse();
+
+
+    return (
+        <TableContainer component={Paper}>
+            <Table sx={{minWidth: 400}} aria-label="simple table">
+                <TableHead>
+                    <TableRow>
+                        <TableCell>Case</TableCell>
+                        <TableCell align="left">Type</TableCell>
+                        <TableCell align="right">Closed</TableCell>
+                        <TableCell align="right">Submitted</TableCell>
+                        <TableCell align="right">Updated</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {applications_.map((row) => (
+                        <TableRow
+                            key={row.application.receiptNumber}
+                            sx={{'&:last-child td, &:last-child th': {border: 0}}}
+                        >
+                            <TableCell component="th" scope="row">{row.application.receiptNumber}</TableCell>
+                            <TableCell component="th" scope="row">{row.application.formType}</TableCell>
+                            <TableCell align="left">{`${row.application.closed}`}</TableCell>
+                            <TableCell align="right">{row.application.submissionDate}</TableCell>
+                            <TableCell align="right">{FormatTime(row.updated)}</TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    );
+}
+
+
+export function ApplicationDocumentsTable({client, applications}: {
+    client: USCIS.Client,
+    applications: USCIS.EmbeddedCase[]
+}): JSX.Element {
+    const {isPending, error, data} = useQuery({
+        queryKey: ['repoData'],
+        queryFn: () => {
+            let promises: Promise<{application: USCIS.EmbeddedCase, document: USCIS.Document}[]>[] = []
+            for (let application of applications) {
+                let promise = client.listDocuments(
+                    application.receiptNumber,
+                ).then(docs => {
+                    return docs.data.map(doc => {
+                        return {application: application, document: doc}
+                    })
+                });
+                promises.push(promise);
+            }
+
+            return Promise.all(promises)
+        },
+    })
+
+    if (isPending) {
+        return (
+            <p>'Loading documents'</p>
+        )
+    }
+
+    if (error) {
+        return (
+            <p>'Failed to load documents: \{error.message}'</p>
+        )
+    }
+
+    let documents = data.flat().filter(doc => {
+        return doc.document.sourceType == "USCIS Generated"
+    }).sort((a, b) => {
+        let aTime = Date.parse(a.document.createDate)
+        let bTime = Date.parse(b.document.createDate)
+
+        return aTime - bTime;
+    }).reverse();
+
+
+    return (
+        <TableContainer component={Paper}>
+            <Table sx={{minWidth: 400}} aria-label="simple table">
+                <TableHead>
+                    <TableRow>
+                        <TableCell>Case</TableCell>
+                        <TableCell align="left">Type</TableCell>
+                        <TableCell align="right">Name</TableCell>
+                        <TableCell align="right">Created At</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {documents.map((row) => (
+                        <TableRow
+                            key={row.document.contentId}
+                            sx={{'&:last-child td, &:last-child th': {border: 0}}}
+                        >
+                            <TableCell component="th" scope="row">
+                                {row.application.formType}
+                            </TableCell>
+                            <TableCell align="left">{row.document.type}</TableCell>
+                            <TableCell align="left">{row.document.fileName}</TableCell>
+                            <TableCell align="right">
+                                {FormatTime(Temporal.Instant.from(row.document.createDate))}
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    );
+}
+
+
+export function ApplicationNoticesTable({applications}: { applications: USCIS.EmbeddedCase[] }): JSX.Element {
     let notices = applications.flatMap(application => {
         return application.notices.map(notice => ({"application": application, "notice": notice}))
     }).sort((a, b) => {
@@ -72,8 +228,7 @@ export function ApplicationNoticesTable({applications}: { applications: Embedded
         let bTime = Date.parse(b.notice.generationDate)
 
         return aTime - bTime;
-    });
-
+    }).reverse();
 
     return (
         <TableContainer component={Paper}>
@@ -107,7 +262,7 @@ export function ApplicationNoticesTable({applications}: { applications: Embedded
 }
 
 
-export function ApplicationEventsTable({applications}: { applications: EmbeddedCase[] }): JSX.Element {
+export function ApplicationEventsTable({applications}: { applications: USCIS.EmbeddedCase[] }): JSX.Element {
     let events = applications.flatMap(application => {
         return application.events.map(event => ({"application": application, "event": event}));
     }).sort((a, b) => {
@@ -115,20 +270,7 @@ export function ApplicationEventsTable({applications}: { applications: EmbeddedC
         let bTime = Date.parse(b.event.eventTimestamp)
 
         return aTime - bTime;
-    });
-
-    let eventDescription = (code: string) => {
-        switch (code) {
-            case "IAF":
-                return "RECEIPT LETTER EMAILED"
-            case "IMAG":
-                return "BIOMETRICS APPOINTMENT NOTICE SENT"
-            case "FTA0":
-                return "DATABASE CHECKS RECEIVED"
-            default:
-                return ""
-        }
-    };
+    }).reverse();
 
     return (
         <TableContainer component={Paper}>
@@ -151,9 +293,10 @@ export function ApplicationEventsTable({applications}: { applications: EmbeddedC
                                 {row.application.formType}
                             </TableCell>
                             <TableCell align="left">{row.event.eventCode}</TableCell>
-                            <TableCell align="left">{eventDescription(row.event.eventCode)}</TableCell>
-                            <TableCell
-                                align="right">{FormatTime(Temporal.Instant.from(row.event.eventTimestamp))}</TableCell>
+                            <TableCell align="left">{USCIS.EventCodes[row.event.eventCode] || ""}</TableCell>
+                            <TableCell align="right">
+                                {FormatTime(Temporal.Instant.from(row.event.eventTimestamp))}
+                            </TableCell>
                         </TableRow>
                     ))}
                 </TableBody>
@@ -162,7 +305,7 @@ export function ApplicationEventsTable({applications}: { applications: EmbeddedC
     );
 }
 
-export function ApplicationJsonCard({application}: { application: EmbeddedCase }): JSX.Element {
+export function ApplicationJsonCard({application}: { application: USCIS.EmbeddedCase }): JSX.Element {
     let applicationCopy = DeepCopy(application) as any;
     applicationCopy.concurrentCases = applicationCopy.concurrentCases.map(application => application.receiptNumber)
 

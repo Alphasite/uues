@@ -1,33 +1,25 @@
-//class UscisClient {
-//    url: string;
-//    graphqlUrl: string;
-//
-//    constructor() {
-//        this.url = "https://my.uscis.gov/account/case-service";
-//        this.graphqlUrl = "https://my.uscis.gov/account/graphql";
-//    }
-//
-//    // https://my.uscis.gov/account/case-service/api/cases/I-131/processing_times/IOE0930929457
-//    // https://my.uscis.gov/account/case-service/api/cases/IOE0930929456/
-//}
+export {EventCodes} from "./uscisEventCodes.ts"
 
 export type EmbeddedCase = {
     receiptNumber: string,
-    submissionDate: string,
     formType: string,
     formName: string,
-    closed: string,
-    ackedByAdjudicatorAndCms: string,
+    closed: boolean,
+    ackedByAdjudicatorAndCms: boolean,
     applicantName: string,
-    areAllGroupStatusesComplete: Boolean,
-    areAllGroupMembersAuthorizedForTravel: Boolean,
-    isPremiumProcessing: Boolean,
-    actionRequired: Boolean,
+    areAllGroupStatusesComplete: boolean,
+    areAllGroupMembersAuthorizedForTravel: boolean,
+    isPremiumProcessing: boolean,
+    actionRequired: boolean,
     concurrentCases: EmbeddedCase[],
     documents: [],
     evidenceRequests: [],
     notices: EmbeddedNotice[],
     events: EmbeddedEvent[],
+    submissionDate: string,
+    submissionTimestamp: string,
+    updatedAt: string,
+    updatedAtTimestamp: string,
 }
 
 type EmbeddedEvent = {
@@ -50,8 +42,33 @@ type EmbeddedNotice = {
     actionType: string,
 }
 
+export type Document = {
+    contentId: string
+    fileName: string
+    type: string
+    sourceType: string
+    createDate: string
+}
+
 export function GetApplicationsFromEmbeddedData(): EmbeddedCase[] {
     let dataElement = document.querySelector("script[data-component-name='CaseCardsApp']")
-    let result: {cases: EmbeddedCase[]} = JSON.parse(dataElement.textContent);
+    let result: { cases: EmbeddedCase[] } = JSON.parse(dataElement.textContent);
     return result.cases.flatMap((application) => [application, ...application.concurrentCases]);
+}
+
+export class Client {
+    // https://my.uscis.gov/account/case-service/api/cases/IOE0930929457/documents
+    baseUrl: string = "https://my.uscis.gov"
+
+    init() {}
+
+    listDocuments(applicationId: string): Promise<{ data: Document[] }> {
+        return fetch(this.baseUrl + `/account/case-service/api/cases/${applicationId}/documents`).then(value => {
+            return value.json()
+        }).then(value => {
+            return value as { data: Document[] }
+        })
+    }
+
+    getL
 }
