@@ -57,7 +57,6 @@ export function GetApplicationsFromEmbeddedData(): EmbeddedCase[] {
 }
 
 export class Client {
-    // https://my.uscis.gov/account/case-service/api/cases/IOE0930929457/documents
     baseUrl: string = "https://my.uscis.gov"
 
     init() {}
