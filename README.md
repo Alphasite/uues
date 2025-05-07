@@ -1,6 +1,33 @@
 # USCIS Enhancement Suite (UES)
 
+This displays the additional data the USCIS has already sent to your browser,
+but doesn't currently display in the UI. This just a nice visualisation of the
+data that USCIS is already sending you.
+
+It is read only and will not send your data anywhere. If you dont trust me can
+audit the code to ensure it doesn't do anything untoward.
+
+Any contributions and enhancements are welcome! I am a backend developer
+masquerading as the world's most mediocre frontend developer, so improvements
+are welcome.
+
+## Local Testing
+
+First build the front end with `pnpm start` then once thats done load it into
+your browser.
+
+Open this page in firefox `about:debugging#/runtime/this-firefox` (other
+browsers are similar) and hit `Load Temporary Add-on…` and then select the
+manifest.json.
+
+NOTE: if you make a change, you need to hit `reload` in the about page to see
+you changes.
+
 ## Rebuilding event codes
+
+We have a hard coded list of event types, generated from the public NEM 5
+documents, its used to map internal codes to human-readable descriptions. If
+they ever realise an updated doc, you can regenerate it as below.
 
 ```shell
  cat ./data/screening.xsd \
