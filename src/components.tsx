@@ -266,8 +266,8 @@ export function ApplicationEventsTable({applications}: { applications: USCIS.Emb
     let events = applications.flatMap(application => {
         return application.events.map(event => ({"application": application, "event": event}));
     }).sort((a, b) => {
-        let aTime = Date.parse(a.event.eventTimestamp)
-        let bTime = Date.parse(b.event.eventTimestamp)
+        let aTime = Date.parse(a.event.createdAtTimestamp)
+        let bTime = Date.parse(b.event.createdAtTimestamp)
 
         return aTime - bTime;
     }).reverse();
@@ -295,7 +295,7 @@ export function ApplicationEventsTable({applications}: { applications: USCIS.Emb
                             <TableCell align="left">{row.event.eventCode}</TableCell>
                             <TableCell align="left">{USCIS.EventCodes[row.event.eventCode] || ""}</TableCell>
                             <TableCell align="right">
-                                {FormatTime(Temporal.Instant.from(row.event.eventTimestamp))}
+                                {FormatTime(Temporal.Instant.from(row.event.createdAtTimestamp))}
                             </TableCell>
                         </TableRow>
                     ))}

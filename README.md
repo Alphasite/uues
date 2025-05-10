@@ -1,4 +1,4 @@
-# USCIS Enhancement Suite (UES)
+# Unofficial myUSCIS Enhancement Suite (UUES)
 
 This displays the additional data the USCIS has already sent to your browser,
 but doesn't currently display in the UI. This just a nice visualisation of the
