@@ -4,6 +4,8 @@ This displays the additional data the USCIS has already sent to your browser,
 but doesn't currently display in the UI. This just a nice visualisation of the
 data that USCIS is already sending you.
 
+![image](https://github.com/user-attachments/assets/9450b44f-5f20-437b-a971-4d5ca2216cd5)
+
 It is read only and will not send your data anywhere. If you dont trust me can
 audit the code to ensure it doesn't do anything untoward.
 
