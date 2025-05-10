@@ -13,6 +13,14 @@ Any contributions and enhancements are welcome! I am a backend developer
 masquerading as the world's most mediocre frontend developer, so improvements
 are welcome.
 
+## *Disclaimer*
+
+Usage of this software includes no warranty and this is provided as-is for
+educational purposes. We do not provide or offer support, nor do we endorse its
+usage. It is provided purely so people can build their own extensions for their
+personal usage specifically to visualise the personal data sent by uscis to
+users. It is not intended to allow you to file or gain any immigration benifits.
+
 ## Local Testing
 
 First build the front end with `pnpm start` then once thats done load it into
