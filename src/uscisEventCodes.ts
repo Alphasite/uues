@@ -1,4 +1,4 @@
-const NemEventCodes = {
+const NiemEventCodes = {
     "MA96": "OCR-B FIELD MISSING(BLANK)",
     "AA": "BASE FEE ADJUSTMENT MADE",
     "AAO": "ATTORNEY ATTACHED",
@@ -493,5 +493,6 @@ const NemEventCodes = {
 export const EventCodes = {
     "IMAG": "BIOMETRICS APPOINTMENT NOTICE SENT",
     "SA": "CASE APPROVAL DECISION WAS RENDERED",
-    ...NemEventCodes,
+    "H008": "CASE APPROVED",
+    ...NiemEventCodes,
 }

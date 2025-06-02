@@ -18,6 +18,18 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import Timeline from '@mui/lab/Timeline';
+import TimelineItem from '@mui/lab/TimelineItem';
+import TimelineSeparator from '@mui/lab/TimelineSeparator';
+import TimelineConnector from '@mui/lab/TimelineConnector';
+import TimelineContent from '@mui/lab/TimelineContent';
+import TimelineDot from '@mui/lab/TimelineDot';
+import TimelineOppositeContent from '@mui/lab/TimelineOppositeContent';
+import MailOutlinedIcon from '@mui/icons-material/MailOutlined';
+import FingerprintIcon from '@mui/icons-material/Fingerprint';
+import GroupsIcon from '@mui/icons-material/Groups';
+import VerifiedIcon from '@mui/icons-material/Verified';
+import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined';
 import {Paper} from "@mui/material";
 import {Temporal} from "temporal-polyfill";
 
@@ -29,12 +41,32 @@ export function Root(queryClient: QueryClient, uscisClient: USCIS.Client) {
             <h2 id="your-cases" className="with-margin-bottom-md with-margin-top-2xl section-title">
                 Raw Data (JSON)
             </h2>
+            <TimelineOverviewCard applications={applications}/>
             <ApplicationOverviewCard client={uscisClient} applications={applications}/>
             {applications.map(application => (
                 <ApplicationJsonCard application={application}/>
             ))}
         </QueryClientProvider>
     )
+}
+
+export function TimelineOverviewCard({applications}: {
+    applications: USCIS.EmbeddedCase[]
+}): JSX.Element {
+    return (
+        <Accordion>
+            <AccordionSummary
+                expandIcon={<ArrowDownwardIcon/>}
+                aria-controls="panel1-content"
+                id="panel1-header"
+            >
+                <Typography component="span">Timeline</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+                <ApplicationTimeline applications={applications}/>
+            </AccordionDetails>
+        </Accordion>
+    );
 }
 
 export function ApplicationOverviewCard({client, applications}: {
@@ -73,7 +105,6 @@ export function ApplicationOverviewCard({client, applications}: {
                 <p/>
                 <h4>Events</h4>
                 <ApplicationEventsTable applications={applications}/>
-
             </AccordionDetails>
         </Accordion>
     );
@@ -117,6 +148,7 @@ export function ApplicationTable({applications}: { applications: USCIS.EmbeddedC
                         <TableCell>Case</TableCell>
                         <TableCell align="left">Type</TableCell>
                         <TableCell align="right">Closed</TableCell>
+                        <TableCell align="right">Action Required</TableCell>
                         <TableCell align="right">Submitted</TableCell>
                         <TableCell align="right">Updated</TableCell>
                     </TableRow>
@@ -130,6 +162,7 @@ export function ApplicationTable({applications}: { applications: USCIS.EmbeddedC
                             <TableCell component="th" scope="row">{row.application.receiptNumber}</TableCell>
                             <TableCell component="th" scope="row">{row.application.formType}</TableCell>
                             <TableCell align="left">{`${row.application.closed}`}</TableCell>
+                            <TableCell align="left">{`${row.application.actionRequired}`}</TableCell>
                             <TableCell align="right">{row.application.submissionDate}</TableCell>
                             <TableCell align="right">{FormatTime(row.updated)}</TableCell>
                         </TableRow>
@@ -148,7 +181,7 @@ export function ApplicationDocumentsTable({client, applications}: {
     const {isPending, error, data} = useQuery({
         queryKey: ['repoData'],
         queryFn: () => {
-            let promises: Promise<{application: USCIS.EmbeddedCase, document: USCIS.Document}[]>[] = []
+            let promises: Promise<{ application: USCIS.EmbeddedCase, document: USCIS.Document }[]>[] = []
             for (let application of applications) {
                 let promise = client.listDocuments(
                     application.receiptNumber,
@@ -320,11 +353,175 @@ export function ApplicationJsonCard({application}: { application: USCIS.Embedded
             </AccordionSummary>
             <AccordionDetails>
                 <pre>
-                    {JSON.stringify(applicationCopy, null, 2)}
+                    {JSON.stringify(applicationCopy, null, 4)}
                 </pre>
             </AccordionDetails>
         </Accordion>
     );
+}
+
+export function ApplicationTimeline({applications}: { applications: USCIS.EmbeddedCase[] }): JSX.Element {
+    type TimelineEvent = {
+        timestamp: Temporal.Instant,
+        title: string | null,
+        description: string | null,
+        textColour: string,
+        dotColour: string,
+        application: USCIS.EmbeddedCase,
+        important: boolean,
+        icon: JSX.Element | null,
+    }
+
+    var timeline: TimelineEvent[] = []
+
+    let startIcon = (<FlagOutlinedIcon/>)
+    let fingerprintIcon = (<FingerprintIcon/>)
+    let interviewIcon = (<GroupsIcon/>)
+    let approvalIcon = (<VerifiedIcon/>)
+    let mailIcon = (<MailOutlinedIcon/>)
+
+    applications.map((application: USCIS.EmbeddedCase) => {
+        for (let event of application.events) {
+            let timelineEvent: TimelineEvent = {
+                timestamp: Temporal.Instant.from(event.createdAtTimestamp),
+                title: null,
+                description: `${application.formType}: ${event.eventCode}: ${USCIS.EventCodes[event.eventCode] || "Unknown"}`,
+                textColour: "text.grey",
+                dotColour: "grey",
+                application: application,
+                important: false,
+                icon: null,
+            }
+
+            switch (event.eventCode) {
+                case "LDA":
+                    timelineEvent.title = `${application.formType}: Mailed`
+                    timelineEvent.description = `${event.eventCode}: ${USCIS.EventCodes[event.eventCode] || "Unknown"}`
+                    timelineEvent.icon = mailIcon
+                    timelineEvent.important = true
+                    break
+
+                case "SA":
+                case "H008":
+                    timelineEvent.title = `${application.formType}: Approved`
+                    timelineEvent.description = `${event.eventCode}: ${USCIS.EventCodes[event.eventCode] || "Unknown"}`
+                    timelineEvent.icon = approvalIcon
+                    timelineEvent.dotColour = "success"
+                    timelineEvent.important = true
+                    break
+            }
+
+            timeline.push(timelineEvent)
+        }
+
+        for (let notice of application.notices) {
+            let timelineEvent: TimelineEvent = {
+                timestamp: Temporal.Instant.from(notice.appointmentDateTime),
+                title: `${application.formType}: ${notice.actionType}`,
+                description: null,
+                textColour: "text.primary",
+                dotColour: "primary",
+                application: application,
+                important: true,
+                icon: null,
+            }
+
+            switch (notice.actionType) {
+                case "Interview Scheduled":
+                    timelineEvent.title = `${application.formType}: Interview`
+                    timelineEvent.description = notice.actionType
+                    timelineEvent.icon = interviewIcon
+                    break
+                case "Appointment Scheduled":
+                    timelineEvent.title = `${application.formType}: Biometrics`
+                    timelineEvent.description = notice.actionType
+                    timelineEvent.icon = fingerprintIcon
+            }
+
+            timeline.push(timelineEvent)
+        }
+
+        // for (let document of application.documents) {
+        //     timeline.push({
+        //         timestamp: Temporal.Instant.from(document),
+        //         title: notice.actionType,
+        //         colour: "",
+        //         application: application
+        //     })
+        // }
+    })
+
+    timeline.sort((a, b) => {
+        return a.timestamp.epochMilliseconds - b.timestamp.epochMilliseconds
+    })
+
+    let locale = Intl.DateTimeFormat(undefined).resolvedOptions().timeZone
+    let submissionTime = Temporal.Instant.from(timeline[0].application.submissionTimestamp).toZonedDateTimeISO(locale)
+    return (
+        <Timeline position="left">
+            <TimelineItem>
+                <TimelineOppositeContent
+                    sx={{ m: 'auto 0' }}
+                    variant="body2"
+                    color="text.secondary"
+                >
+                    <Typography variant="h6" component="span">
+                        {submissionTime.toString().substring(0, 10)}
+                    </Typography>
+                    <Typography>
+                        0 days
+                    </Typography>
+                </TimelineOppositeContent>
+                <TimelineSeparator>
+                    <TimelineDot color="success" variant="filled">
+                        {startIcon}
+                    </TimelineDot>
+                    <TimelineConnector />
+                </TimelineSeparator>
+                <TimelineContent sx={{ py: '12px', px: 2 }} color="primary">
+                    <Typography variant="h6" component="span">
+                        Initial Submission
+                    </Typography>
+                </TimelineContent>
+            </TimelineItem>
+            {timeline.map(e => {
+                let instant = e.timestamp.toZonedDateTimeISO(locale)
+                let submissionDate = Temporal.Instant.from(e.application.submissionTimestamp)
+                let timeSinceSubmission = e.timestamp.since(submissionDate).round("days")
+                return (
+                    <TimelineItem>
+                        <TimelineOppositeContent
+                            sx={{ m: 'auto 0' }}
+                            variant="body2"
+                            color="text.secondary"
+                        >
+                            <Typography variant="h6" component="span">
+                                {instant.toString().substring(0, 10)}
+                            </Typography>
+                            <Typography>
+                                {timeSinceSubmission.days} days
+                            </Typography>
+                        </TimelineOppositeContent>
+                        <TimelineSeparator>
+                            <TimelineConnector />
+                            <TimelineDot color={e.dotColour} variant={e.important ? "filled" : "outlined"}>
+                                {e.icon}
+                            </TimelineDot>
+                            <TimelineConnector />
+                        </TimelineSeparator>
+                        <TimelineContent sx={{ py: '12px', px: 2 }} color={e.textColour}>
+                            <Typography variant="h6" component="span">
+                                {e.title ? e.title : ""}
+                            </Typography>
+                            <Typography variant="subtitle2">
+                                {e.description}
+                            </Typography>
+                        </TimelineContent>
+                    </TimelineItem>
+                )
+            })}
+        </Timeline>
+    )
 }
 
 function DeepCopy<T>(obj: T): T {
