@@ -33,23 +33,6 @@ import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined';
 import {Paper} from "@mui/material";
 import {Temporal} from "temporal-polyfill";
 
-export function Root(queryClient: QueryClient, uscisClient: USCIS.Client) {
-    let applications = USCIS.GetApplicationsFromEmbeddedData();
-
-    return (
-        <QueryClientProvider client={queryClient}>
-            <h2 id="your-cases" className="with-margin-bottom-md with-margin-top-2xl section-title">
-                Raw Data (JSON)
-            </h2>
-            <TimelineOverviewCard applications={applications}/>
-            <ApplicationOverviewCard client={uscisClient} applications={applications}/>
-            {applications.map(application => (
-                <ApplicationJsonCard application={application}/>
-            ))}
-        </QueryClientProvider>
-    )
-}
-
 export function TimelineOverviewCard({applications}: {
     applications: USCIS.EmbeddedCase[]
 }): JSX.Element {
@@ -70,7 +53,7 @@ export function TimelineOverviewCard({applications}: {
 }
 
 export function ApplicationOverviewCard({client, applications}: {
-    client: USCIS.Client,
+    client: USCIS.Client | null,
     applications: USCIS.EmbeddedCase[]
 }): JSX.Element {
     let userActionNeeded = applications
@@ -87,23 +70,27 @@ export function ApplicationOverviewCard({client, applications}: {
                 <Typography component="span">Overview</Typography>
             </AccordionSummary>
             <AccordionDetails>
-                <p>Action Required: {`${userActionNeeded}`}</p>
+                <Typography variant="body2">Action Required: {`${userActionNeeded}`}</Typography>
 
                 <p/>
-                <h4>Cases</h4>
+
+                <Typography variant="h5" gutterBottom>Cases</Typography>
                 <ApplicationTable applications={applications}/>
 
-                <p/>
-                <h4>Documents</h4>
-                <ApplicationDocumentsTable client={client} applications={applications}/>
+                {client !== null ? (
+                    <>
+                        <p/>
+                        <Typography variant="h5" gutterBottom>Documents</Typography>
+                        <ApplicationDocumentsTable client={client} applications={applications}/>
+                    </>
+                ) : []}
 
-
                 <p/>
-                <h4>Notices</h4>
+                <Typography variant="h5" gutterBottom>Notices</Typography>
                 <ApplicationNoticesTable applications={applications}/>
 
                 <p/>
-                <h4>Events</h4>
+                <Typography variant="h5" gutterBottom>Events</Typography>
                 <ApplicationEventsTable applications={applications}/>
             </AccordionDetails>
         </Accordion>
@@ -175,12 +162,17 @@ export function ApplicationTable({applications}: { applications: USCIS.EmbeddedC
 
 
 export function ApplicationDocumentsTable({client, applications}: {
-    client: USCIS.Client,
+    client: USCIS.Client | null,
     applications: USCIS.EmbeddedCase[]
 }): JSX.Element {
     const {isPending, error, data} = useQuery({
         queryKey: ['repoData'],
         queryFn: () => {
+            // TODO handle this more gracefully
+            if (client === null) {
+                return []
+            }
+
             let promises: Promise<{ application: USCIS.EmbeddedCase, document: USCIS.Document }[]>[] = []
             for (let application of applications) {
                 let promise = client.listDocuments(
@@ -461,7 +453,7 @@ export function ApplicationTimeline({applications}: { applications: USCIS.Embedd
         <Timeline position="left">
             <TimelineItem>
                 <TimelineOppositeContent
-                    sx={{ m: 'auto 0' }}
+                    sx={{m: 'auto 0'}}
                     variant="body2"
                     color="text.secondary"
                 >
@@ -476,9 +468,9 @@ export function ApplicationTimeline({applications}: { applications: USCIS.Embedd
                     <TimelineDot color="success" variant="filled">
                         {startIcon}
                     </TimelineDot>
-                    <TimelineConnector />
+                    <TimelineConnector/>
                 </TimelineSeparator>
-                <TimelineContent sx={{ py: '12px', px: 2 }} color="primary">
+                <TimelineContent sx={{py: '12px', px: 2}} color="primary">
                     <Typography variant="h6" component="span">
                         Initial Submission
                     </Typography>
@@ -491,7 +483,7 @@ export function ApplicationTimeline({applications}: { applications: USCIS.Embedd
                 return (
                     <TimelineItem>
                         <TimelineOppositeContent
-                            sx={{ m: 'auto 0' }}
+                            sx={{m: 'auto 0'}}
                             variant="body2"
                             color="text.secondary"
                         >
@@ -503,13 +495,13 @@ export function ApplicationTimeline({applications}: { applications: USCIS.Embedd
                             </Typography>
                         </TimelineOppositeContent>
                         <TimelineSeparator>
-                            <TimelineConnector />
+                            <TimelineConnector/>
                             <TimelineDot color={e.dotColour} variant={e.important ? "filled" : "outlined"}>
                                 {e.icon}
                             </TimelineDot>
-                            <TimelineConnector />
+                            <TimelineConnector/>
                         </TimelineSeparator>
-                        <TimelineContent sx={{ py: '12px', px: 2 }} color={e.textColour}>
+                        <TimelineContent sx={{py: '12px', px: 2}} color={e.textColour}>
                             <Typography variant="h6" component="span">
                                 {e.title ? e.title : ""}
                             </Typography>

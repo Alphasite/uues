@@ -12,7 +12,7 @@
   "content_scripts": [
     {
       "matches": ["*://my.uscis.gov/account/applicant"],
-      "js": ["dist/main.js"]
+      "js": ["dist/extension.js"]
     }
   ],
 

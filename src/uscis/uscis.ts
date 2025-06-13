@@ -50,10 +50,32 @@ export type Document = {
     createDate: string
 }
 
-export function GetApplicationsFromEmbeddedData(): EmbeddedCase[] {
-    let dataElement = document.querySelector("script[data-component-name='CaseCardsApp']")
-    let result: { cases: EmbeddedCase[] } = JSON.parse(dataElement.textContent);
-    return result.cases.flatMap((application) => [application, ...application.concurrentCases]);
+export function findCases(object: any): EmbeddedCase[] {
+    if (object === null || object === undefined) {
+        return []
+    }
+
+    if (Array.isArray(object)) {
+        return object.flatMap(obj => findCases(obj))
+    }
+
+    if (typeof object == 'object') {
+        let cases = Object.entries(object)
+            .flatMap(([_, value]) => findCases(value))
+
+        if (isCase(object)) {
+            object.concurrentCases = cases.map(application => application.receiptNumber)
+            cases.push(object)
+        }
+
+        return cases
+    }
+
+    return []
+}
+
+function isCase(object: any): boolean {
+    return object["formType"] !== undefined;
 }
 
 export class Client {

@@ -4,28 +4,33 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
+    "build": "rspack",
+    "push": "rspack && wrangler pages deploy --project-name uscis-json dist",
     "start": "rspack --watch --devtool"
   },
   "devDependencies": {
-    "@rspack/cli": "^1.3.13",
-    "@rspack/core": "^1.3.13",
+    "@rspack/cli": "^1.3.15",
+    "@rspack/core": "^1.3.15",
+    "@rspack/plugin-react-refresh": "^1.4.3",
     "@swc/cli": "^0.6.0",
-    "@swc/core": "^1.11.29",
+    "@swc/core": "^1.12.0",
     "@types/jquery": "^3.5.32",
-    "@types/react": "^19.1.6",
-    "@types/react-dom": "^19.1.5",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
     "chokidar": "^4.0.3",
+    "html-rspack-plugin": "^6.1.2",
+    "react-refresh": "^0.17.0",
     "scheduler": "^0.26.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "wrangler": "^4.19.2"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
-    "@mui/icons-material": "^7.1.0",
+    "@mui/icons-material": "^7.1.1",
     "@mui/lab": "7.0.0-beta.12",
-    "@mui/material": "^7.1.0",
-    "@rsbuild/plugin-react": "^1.3.1",
-    "@tanstack/react-query": "^5.79.0",
+    "@mui/material": "^7.1.1",
+    "@tanstack/react-query": "^5.80.7",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "temporal-polyfill": "^0.3.0"

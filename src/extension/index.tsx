@@ -1,10 +1,8 @@
-import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 
-import {GetApplicationsFromEmbeddedData, Client} from "./uscis.ts";
-import {Root} from "./components.tsx";
+import * as App from './app.tsx';
+import {Client} from "../uscis/uscis.ts";
 import {QueryClient} from "@tanstack/react-query";
-
 
 function addRootElement(): Element {
     let casesElement = document.getElementById("your-cases").parentElement;
@@ -25,9 +23,6 @@ function addRootElement(): Element {
 const queryClient = new QueryClient();
 const uscisClient = new Client();
 
-let applications = GetApplicationsFromEmbeddedData();
-console.log(applications);
-
-let app = addRootElement();
-let root = createRoot(app);
-root.render(Root(queryClient, uscisClient));
+let rootElement = addRootElement();
+let root = createRoot(rootElement);
+root.render(App.Root(queryClient, uscisClient));
